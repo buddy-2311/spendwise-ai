@@ -26,11 +26,11 @@ const Transactions = () => {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
             
             // First generate any pending recurring expenses
-            await axios.post('http://localhost:5000/api/recurring-expenses/generate-current-month', {}, config);
+            await axios.post('https://spendwise-ai-fwmp.onrender.com/api/recurring-expenses/generate-current-month', {}, config);
             
             const [expRes, incRes] = await Promise.all([
-                axios.get('http://localhost:5000/api/expenses', config),
-                axios.get('http://localhost:5000/api/income', config)
+                axios.get('https://spendwise-ai-fwmp.onrender.com/api/expenses', config),
+                axios.get('https://spendwise-ai-fwmp.onrender.com/api/income', config)
             ]);
             
             const formattedExp = expRes.data.map(t => ({ ...t, type: 'expense' }));
@@ -51,9 +51,9 @@ const Transactions = () => {
         e.preventDefault();
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
         if (type === 'expense') {
-            await axios.post('http://localhost:5000/api/expenses', { amount, category, note }, config);
+            await axios.post('https://spendwise-ai-fwmp.onrender.com/api/expenses', { amount, category, note }, config);
         } else {
-            await axios.post('http://localhost:5000/api/income', { amount, source }, config);
+            await axios.post('https://spendwise-ai-fwmp.onrender.com/api/income', { amount, source }, config);
         }
         setShowModal(false);
         fetchData();
@@ -62,9 +62,9 @@ const Transactions = () => {
     const handleDelete = async (id, transType) => {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
         if (transType === 'expense') {
-            await axios.delete(`http://localhost:5000/api/expenses/${id}`, config);
+            await axios.delete(`https://spendwise-ai-fwmp.onrender.com/api/expenses/${id}`, config);
         } else {
-            await axios.delete(`http://localhost:5000/api/income/${id}`, config);
+            await axios.delete(`https://spendwise-ai-fwmp.onrender.com/api/income/${id}`, config);
         }
         fetchData();
     };

@@ -23,9 +23,9 @@ const FuturePlanner = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
             const [goalsRes, summaryRes, insightsRes] = await Promise.all([
-                axios.get('http://localhost:5000/api/goals', config),
-                axios.get('http://localhost:5000/api/goals/summary/dashboard', config),
-                axios.get('http://localhost:5000/api/goals/insights/future', config)
+                axios.get('https://spendwise-ai-fwmp.onrender.com/api/goals', config),
+                axios.get('https://spendwise-ai-fwmp.onrender.com/api/goals/summary/dashboard', config),
+                axios.get('https://spendwise-ai-fwmp.onrender.com/api/goals/insights/future', config)
             ]);
             setGoals(goalsRes.data);
             setSummary(summaryRes.data);
@@ -42,7 +42,7 @@ const FuturePlanner = () => {
     const handleDelete = async (id) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`http://localhost:5000/api/goals/${id}`, config);
+            await axios.delete(`https://spendwise-ai-fwmp.onrender.com/api/goals/${id}`, config);
             toast.success('Goal deleted successfully');
             fetchData();
         } catch (error) {
@@ -53,9 +53,9 @@ const FuturePlanner = () => {
     const handleSaveGoal = async (goalData) => {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
         if (editGoal) {
-            await axios.put(`http://localhost:5000/api/goals/${editGoal._id}`, goalData, config);
+            await axios.put(`https://spendwise-ai-fwmp.onrender.com/api/goals/${editGoal._id}`, goalData, config);
         } else {
-            await axios.post('http://localhost:5000/api/goals', goalData, config);
+            await axios.post('https://spendwise-ai-fwmp.onrender.com/api/goals', goalData, config);
         }
         setShowModal(false);
         setEditGoal(null);
@@ -65,7 +65,7 @@ const FuturePlanner = () => {
     const handleAddMonthlyContribution = async (goalId) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.patch(`http://localhost:5000/api/goals/${goalId}/add-monthly-contribution`, {}, config);
+            await axios.patch(`https://spendwise-ai-fwmp.onrender.com/api/goals/${goalId}/add-monthly-contribution`, {}, config);
             fetchData();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to add contribution');
@@ -75,7 +75,7 @@ const FuturePlanner = () => {
     const handleRemoveMonthlyContribution = async (goalId) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`http://localhost:5000/api/goals/${goalId}/remove-monthly-contribution`, config);
+            await axios.delete(`https://spendwise-ai-fwmp.onrender.com/api/goals/${goalId}/remove-monthly-contribution`, config);
             toast.success('Contribution undone successfully');
             fetchData();
         } catch (error) {

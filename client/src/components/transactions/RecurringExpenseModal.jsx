@@ -32,10 +32,10 @@ const RecurringExpenseModal = ({ isOpen, onClose, onSave, editExpense }) => {
 
         try {
             if (editExpense) {
-                await axios.put(`http://localhost:5000/api/recurring-expenses/${editExpense._id}`, data, config);
+                await axios.put(`https://spendwise-ai-fwmp.onrender.com/api/recurring-expenses/${editExpense._id}`, data, config);
                 toast.success("Recurring expense updated successfully");
             } else {
-                await axios.post('http://localhost:5000/api/recurring-expenses', data, config);
+                await axios.post('https://spendwise-ai-fwmp.onrender.com/api/recurring-expenses', data, config);
                 toast.success("Recurring expense added successfully");
             }
             onSave();

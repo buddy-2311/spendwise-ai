@@ -44,7 +44,7 @@ const Settings = () => {
         e.preventDefault();
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.put('http://localhost:5000/api/users/profile', { name, email, monthlyIncome }, config);
+            const { data } = await axios.put('https://spendwise-ai-fwmp.onrender.com/api/users/profile', { name, email, monthlyIncome }, config);
             updateUser(data);
             toast.success('Profile updated successfully');
         } catch (error) {
@@ -55,7 +55,7 @@ const Settings = () => {
     const handleThemeUpdate = async (themeId) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const { data } = await axios.put('http://localhost:5000/api/users/theme', { theme: themeId }, config);
+            const { data } = await axios.put('https://spendwise-ai-fwmp.onrender.com/api/users/theme', { theme: themeId }, config);
             updateUser(data);
             toast.success('Theme updated successfully');
         } catch (error) {
@@ -70,7 +70,7 @@ const Settings = () => {
         }
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.put('http://localhost:5000/api/users/change-password', { currentPassword, newPassword }, config);
+            await axios.put('https://spendwise-ai-fwmp.onrender.com/api/users/change-password', { currentPassword, newPassword }, config);
             toast.success('Password changed successfully');
             setCurrentPassword('');
             setNewPassword('');
@@ -82,7 +82,7 @@ const Settings = () => {
 
     const handleSendResetLink = async () => {
         try {
-            const { data } = await axios.post('http://localhost:5000/api/auth/forgot-password', { email: user.email });
+            const { data } = await axios.post('https://spendwise-ai-fwmp.onrender.com/api/auth/forgot-password', { email: user.email });
             setResetToken(data.resetToken);
             setResetEmailSent(true);
             toast.success('Reset code sent!');
@@ -98,7 +98,7 @@ const Settings = () => {
         }
         setResettingPassword(true);
         try {
-            await axios.post('http://localhost:5000/api/auth/reset-password', {
+            await axios.post('https://spendwise-ai-fwmp.onrender.com/api/auth/reset-password', {
                 token: resetCode,
                 password: resetNewPassword
             });

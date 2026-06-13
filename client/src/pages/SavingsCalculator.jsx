@@ -33,11 +33,11 @@ const SavingsCalculator = () => {
                 const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
                 const [incRes, expRes, subSumRes, recExpRes, compSavRes] = await Promise.all([
-                    axios.get('http://localhost:5000/api/income', config),
-                    axios.get('http://localhost:5000/api/expenses', config),
-                    axios.get('http://localhost:5000/api/subscriptions/summary', config),
-                    axios.get('http://localhost:5000/api/recurring-expenses', config),
-                    axios.get(`http://localhost:5000/api/compulsory-savings?month=${currentMonth}&year=${currentYear}`, config)
+                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/income', config),
+                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/expenses', config),
+                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/subscriptions/summary', config),
+                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/recurring-expenses', config),
+                    axios.get(`https://spendwise-ai-fwmp.onrender.com/api/compulsory-savings?month=${currentMonth}&year=${currentYear}`, config)
                 ]);
 
                 const income = incRes.data;

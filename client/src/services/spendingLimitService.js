@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API = 'http://localhost:5000/api/spending-limits';
+const API = 'https://spendwise-ai-fwmp.onrender.com/api/spending-limits';
 
 const getConfig = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
 

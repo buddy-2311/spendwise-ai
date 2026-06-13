@@ -21,8 +21,8 @@ const Topbar = ({ onMenuClick }) => {
             try {
                 const config = { headers: { Authorization: `Bearer ${user.token}` } };
                 const [expRes, incRes] = await Promise.all([
-                    axios.get('http://localhost:5000/api/expenses', config),
-                    axios.get('http://localhost:5000/api/income', config)
+                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/expenses', config),
+                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/income', config)
                 ]);
                 const totalExpense = expRes.data.reduce((s, e) => s + e.amount, 0);
                 const totalIncome = incRes.data.reduce((s, e) => s + e.amount, 0);

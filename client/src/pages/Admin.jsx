@@ -12,7 +12,7 @@ const Admin = () => {
         const fetchStats = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${user.token}` } };
-                const { data } = await axios.get('http://localhost:5000/api/admin/stats', config);
+                const { data } = await axios.get('https://spendwise-ai-fwmp.onrender.com/api/admin/stats', config);
                 setStats(data);
             } catch (error) {
                 console.error("Error fetching admin stats", error);

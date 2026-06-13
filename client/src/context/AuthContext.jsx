@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
-        const { data } = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+        const { data } = await axios.post('https://spendwise-ai-fwmp.onrender.com/api/auth/login', { email, password });
         // Fallback invalid themes
         data.theme = getSafeTheme(data.theme);
         setUser(data);
@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const register = async (name, email, password) => {
-        const { data } = await axios.post('http://localhost:5000/api/auth/register', { name, email, password });
+        const { data } = await axios.post('https://spendwise-ai-fwmp.onrender.com/api/auth/register', { name, email, password });
         data.theme = getSafeTheme(data.theme);
         setUser(data);
         localStorage.setItem('userInfo', JSON.stringify(data));

@@ -39,16 +39,16 @@ const Dashboard = () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${user.token}` } };
                 const [expRes, incRes] = await Promise.all([
-                    axios.get('http://localhost:5000/api/expenses', config),
-                    axios.get('http://localhost:5000/api/income', config)
+                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/expenses', config),
+                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/income', config)
                 ]);
                 setExpenses(expRes.data);
                 setIncome(incRes.data);
 
-                try { const r = await axios.get('http://localhost:5000/api/predictions/next-month', config); setPredictions(r.data); } catch {}
-                try { const r = await axios.get('http://localhost:5000/api/subscriptions/summary', config); setSubSummary(r.data); } catch {}
-                try { const r = await axios.get('http://localhost:5000/api/net-worth/summary', config); setNwSummary(r.data); } catch {}
-                try { const r = await axios.get(`http://localhost:5000/api/spending-limits/summary?month=${currentMonth}&year=${currentYear}`, config); setLimitSummary(r.data); } catch {}
+                try { const r = await axios.get('https://spendwise-ai-fwmp.onrender.com/api/predictions/next-month', config); setPredictions(r.data); } catch {}
+                try { const r = await axios.get('https://spendwise-ai-fwmp.onrender.com/api/subscriptions/summary', config); setSubSummary(r.data); } catch {}
+                try { const r = await axios.get('https://spendwise-ai-fwmp.onrender.com/api/net-worth/summary', config); setNwSummary(r.data); } catch {}
+                try { const r = await axios.get(`https://spendwise-ai-fwmp.onrender.com/api/spending-limits/summary?month=${currentMonth}&year=${currentYear}`, config); setLimitSummary(r.data); } catch {}
                 fetchCompulsorySaving();
             } catch (error) {
                 console.error("Error fetching data", error);

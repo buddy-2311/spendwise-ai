@@ -16,7 +16,7 @@ const RecurringExpenseList = ({ isOpen, onClose, onUpdate }) => {
     const fetchRecurring = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.get('http://localhost:5000/api/recurring-expenses', config);
+            const res = await axios.get('https://spendwise-ai-fwmp.onrender.com/api/recurring-expenses', config);
             setExpenses(res.data);
         } catch (error) {
             console.error(error);
@@ -32,7 +32,7 @@ const RecurringExpenseList = ({ isOpen, onClose, onUpdate }) => {
     const handleToggleStatus = async (id) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.patch(`http://localhost:5000/api/recurring-expenses/${id}/status`, {}, config);
+            await axios.patch(`https://spendwise-ai-fwmp.onrender.com/api/recurring-expenses/${id}/status`, {}, config);
             fetchRecurring();
             onUpdate();
         } catch (error) {
@@ -43,7 +43,7 @@ const RecurringExpenseList = ({ isOpen, onClose, onUpdate }) => {
     const handleDelete = async (id) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`http://localhost:5000/api/recurring-expenses/${id}`, config);
+            await axios.delete(`https://spendwise-ai-fwmp.onrender.com/api/recurring-expenses/${id}`, config);
             toast.success('Recurring expense deleted successfully');
             fetchRecurring();
             onUpdate();
