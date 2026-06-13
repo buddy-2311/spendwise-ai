@@ -1,0 +1,59 @@
+:root,
+[data-theme="light"] {
+  --color-primary: #4F46E5;
+  --color-secondary: #8B5CF6;
+  --color-bg: #F8FAFC;
+  --color-card: #FFFFFF;
+  --color-text: #111827;
+  --color-muted: #6B7280;
+  --color-border: #E5E7EB;
+}
+
+[data-theme="dark"] {
+  --color-primary: #8B5CF6;
+  --color-secondary: #6366F1;
+  --color-bg: #0F172A;
+  --color-card: #1E293B;
+  --color-text: #F8FAFC;
+  --color-muted: #CBD5E1;
+  --color-border: #334155;
+}
+
+/* Dark Theme Global Overrides for Tailwind Utilities */
+[data-theme="dark"] .bg-white {
+    background-color: var(--color-card) !important;
+}
+[data-theme="dark"] .text-gray-800,
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-700 {
+    color: var(--color-text) !important;
+}
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-400 {
+    color: var(--color-muted) !important;
+}
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-gray-100 {
+    background-color: var(--color-bg) !important;
+}
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200 {
+    border-color: var(--color-border) !important;
+}
+[data-theme="dark"] input, 
+[data-theme="dark"] select {
+    background-color: var(--color-card) !important;
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+}
+[data-theme="dark"] table th {
+    background-color: var(--color-bg) !important;
+    color: var(--color-text) !important;
+}
+[data-theme="dark"] table tr {
+    border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .glass-card {
+    background-color: rgba(30, 41, 59, 0.8) !important;
+    border-color: var(--color-border) !important;
+}
