@@ -216,7 +216,7 @@ const SavingsCalculator = () => {
         return (
             <div className="space-y-6 max-w-5xl mx-auto">
                 <div className="h-8 bg-gray-200 rounded animate-pulse w-48" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {[1, 2, 3].map(i => (
                         <div key={i} className="h-24 bg-gray-200 rounded-2xl animate-pulse" />
                     ))}
@@ -242,8 +242,8 @@ const SavingsCalculator = () => {
                     <p className="text-xl font-bold text-danger">
                         ₹{(autoData.monthlyExpenses + totalFixedExpenses).toLocaleString()}
                     </p>
-                    <p className="text-[10px] text-gray-400">
-                        Expenses: ₹{autoData.monthlyExpenses.toLocaleString()} + Subs: ₹{autoData.subscriptionsCost.toLocaleString()} + Recurring: ₹{autoData.recurringExpensesCost.toLocaleString()} + Saving: ₹{autoData.compulsorySaving.toLocaleString()}
+                   <p className="text-[10px] text-gray-400">
+                     Expenses: ₹{autoData.monthlyExpenses.toLocaleString()} + Subs: ₹{autoData.subscriptionsCost.toLocaleString()} + Recurring: ₹{autoData.recurringExpensesCost.toLocaleString()} + Compulsory Saving: ₹{autoData.compulsorySaving.toLocaleString()}
                     </p>
                 </div>
 
@@ -253,6 +253,12 @@ const SavingsCalculator = () => {
                         ₹{Math.max(0, availableIncome).toLocaleString()}
                     </p>
                 </div>
+                <div className="glass-card p-4">
+    <p className="text-xs text-gray-500">Selected Goal Saved</p>
+    <p className="text-xl font-bold text-primary">
+        ₹{Number(currentSaved || 0).toLocaleString()}
+    </p>
+</div>
             </div>
 
             <div className="glass-card p-6">
