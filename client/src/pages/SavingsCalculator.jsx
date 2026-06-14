@@ -1,18 +1,21 @@
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { Calculator, Target, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
+import { Calculator, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
 
 const SavingsCalculator = () => {
     const { user } = useContext(AuthContext);
     const [loadingData, setLoadingData] = useState(true);
+
+    const [goals, setGoals] = useState([]);
+    const [selectedGoalId, setSelectedGoalId] = useState('');
+
     const [goalName, setGoalName] = useState('');
     const [targetAmount, setTargetAmount] = useState('');
     const [currentSaved, setCurrentSaved] = useState('');
     const [deadline, setDeadline] = useState('');
     const [result, setResult] = useState(null);
 
-    // Auto-filled data
     const [autoData, setAutoData] = useState({
         monthlyIncome: 0,
         monthlyExpenses: 0,
@@ -26,36 +29,104 @@ const SavingsCalculator = () => {
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
+    const API_BASE = import.meta.env.VITE_API_URL || 'https://spendwise-ai-fwmp.onrender.com/api';
+
+    const getGoalSavedAmount = (goal) => {
+        return Number(
+            goal?.currentAmount ??
+            goal?.savedAmount ??
+            goal?.currentSaved ??
+            goal?.saved ??
+            0
+        );
+    };
+
+    const getGoalTargetAmount = (goal) => {
+        return Number(
+            goal?.targetAmount ??
+            goal?.target ??
+            0
+        );
+    };
+
+    const getGoalName = (goal) => {
+        return goal?.name || goal?.title || '';
+    };
+
+    const getGoalDeadline = (goal) => {
+        return goal?.deadline || goal?.dueDate || goal?.targetDate || '';
+    };
+
+    const getActualCompulsorySaving = (saving) => {
+        return Number(
+            saving?.savedAmount ??
+            saving?.currentSaved ??
+            saving?.currentAmount ??
+            saving?.savedBalance ??
+            saving?.amountSaved ??
+            saving?.actualSaved ??
+            saving?.balance ??
+            0
+        );
+    };
+
+    const handleGoalSelect = (goalId) => {
+        setSelectedGoalId(goalId);
+        setResult(null);
+
+        const selectedGoal = goals.find(goal => (goal._id || goal.id) === goalId);
+
+        if (!selectedGoal) return;
+
+        setGoalName(getGoalName(selectedGoal));
+        setTargetAmount(getGoalTargetAmount(selectedGoal));
+        setCurrentSaved(getGoalSavedAmount(selectedGoal));
+
+        const goalDate = getGoalDeadline(selectedGoal);
+        if (goalDate) {
+            setDeadline(new Date(goalDate).toISOString().slice(0, 7));
+        } else {
+            setDeadline('');
+        }
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${user.token}` } };
-                const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
-                const [incRes, expRes, subSumRes, recExpRes, compSavRes] = await Promise.all([
-                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/income', config),
-                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/expenses', config),
-                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/subscriptions/summary', config),
-                    axios.get('https://spendwise-ai-fwmp.onrender.com/api/recurring-expenses', config),
-                    axios.get(`https://spendwise-ai-fwmp.onrender.com/api/compulsory-savings?month=${currentMonth}&year=${currentYear}`, config)
+                const [incRes, expRes, subSumRes, recExpRes, compSavRes, goalsRes] = await Promise.all([
+                    axios.get(`${API_BASE}/income`, config),
+                    axios.get(`${API_BASE}/expenses`, config),
+                    axios.get(`${API_BASE}/subscriptions/summary`, config),
+                    axios.get(`${API_BASE}/recurring-expenses`, config),
+                    axios.get(`${API_BASE}/compulsory-savings?month=${currentMonth}&year=${currentYear}`, config),
+                    axios.get(`${API_BASE}/goals`, config)
                 ]);
 
-                const income = incRes.data;
-                const expenses = expRes.data;
-                const subSummary = subSumRes.data;
-                const recExpenses = recExpRes.data;
-                const compSavings = compSavRes.data;
+                const income = incRes.data || [];
+                const expenses = expRes.data || [];
+                const subSummary = subSumRes.data || {};
+                const recExpenses = recExpRes.data || [];
+                const compSavings = compSavRes.data || {};
+                const futureGoals = goalsRes.data || [];
 
-                const totalIncome = income.reduce((s, i) => s + i.amount, 0) || user?.monthlyIncome || 0;
-                const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-                const subCost = subSummary?.monthlyCost || 0;
-                const recCost = recExpenses.filter(r => r.status === 'Active').reduce((s, r) => s + (r.amount || 0), 0);
-                const compSavingTarget = compSavings?.targetAmount || 0;
+                setGoals(futureGoals);
 
-                // Category-wise expenses for suggestions
+                const totalIncome = income.reduce((s, i) => s + Number(i.amount || 0), 0) || user?.monthlyIncome || 0;
+                const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+                const subCost = Number(subSummary?.monthlyCost || 0);
+
+                const recCost = recExpenses
+                    .filter(r => r.status === 'Active')
+                    .reduce((s, r) => s + Number(r.amount || 0), 0);
+
+                const actualCompulsorySaving = getActualCompulsorySaving(compSavings);
+
                 const catMap = {};
                 expenses.forEach(e => {
-                    catMap[e.category] = (catMap[e.category] || 0) + e.amount;
+                    const category = e.category || 'Other';
+                    catMap[category] = (catMap[category] || 0) + Number(e.amount || 0);
                 });
 
                 setAutoData({
@@ -63,17 +134,35 @@ const SavingsCalculator = () => {
                     monthlyExpenses: totalExpenses,
                     subscriptionsCost: subCost,
                     recurringExpensesCost: recCost,
-                    compulsorySaving: compSavingTarget,
+                    compulsorySaving: actualCompulsorySaving,
                     expenseCategories: catMap
                 });
+
+                const firstActiveGoal = futureGoals.find(goal => goal.status === 'Active') || futureGoals[0];
+
+                if (firstActiveGoal) {
+                    const goalDate = getGoalDeadline(firstActiveGoal);
+
+                    setSelectedGoalId(firstActiveGoal._id || firstActiveGoal.id);
+                    setGoalName(getGoalName(firstActiveGoal));
+                    setTargetAmount(getGoalTargetAmount(firstActiveGoal));
+                    setCurrentSaved(getGoalSavedAmount(firstActiveGoal));
+
+                    if (goalDate) {
+                        setDeadline(new Date(goalDate).toISOString().slice(0, 7));
+                    }
+                }
             } catch (err) {
                 console.error('Failed to load user data', err);
             } finally {
                 setLoadingData(false);
             }
         };
-        fetchData();
-    }, [user.token, currentMonth, currentYear]);
+
+        if (user?.token) {
+            fetchData();
+        }
+    }, [user?.token, currentMonth, currentYear, API_BASE]);
 
     const totalFixedExpenses = autoData.subscriptionsCost + autoData.recurringExpensesCost + autoData.compulsorySaving;
     const availableIncome = autoData.monthlyIncome - autoData.monthlyExpenses - totalFixedExpenses;
@@ -83,7 +172,7 @@ const SavingsCalculator = () => {
 
         const target = Number(targetAmount);
         const saved = Number(currentSaved) || 0;
-        const needed = target - saved;
+        const needed = Math.max(0, target - saved);
         const available = Math.max(0, availableIncome);
         const shortfall = needed - available;
 
@@ -117,7 +206,7 @@ const SavingsCalculator = () => {
         }
 
         if (resultObj.isPossible) {
-            resultObj.message = `This goal is possible this month! You need ₹${needed.toLocaleString()} and have ₹${available.toLocaleString()} available after all expenses, subscriptions, recurring expenses, and compulsory savings.`;
+            resultObj.message = `This goal is possible this month! You need ₹${needed.toLocaleString()} and have ₹${available.toLocaleString()} available after all expenses, subscriptions, recurring expenses, and currently saved amount.`;
             resultObj.progress = Math.min(100, Math.round((saved / target) * 100));
         } else {
             resultObj.message = `This goal is not possible this month with your current income and expenses.`;
@@ -129,9 +218,12 @@ const SavingsCalculator = () => {
                 .sort((a, b) => b.val - a.val);
 
             let remainingReduction = resultObj.shortfall;
+
             catEntries.forEach(({ cat, val }) => {
                 if (remainingReduction <= 0) return;
+
                 const reduction = Math.min(val * 0.5, remainingReduction);
+
                 if (reduction >= 500) {
                     resultObj.suggestions.push(`Reduce ${cat} spending by ₹${Math.round(reduction).toLocaleString()}`);
                     remainingReduction -= reduction;
@@ -151,7 +243,7 @@ const SavingsCalculator = () => {
             <div className="space-y-6 max-w-5xl mx-auto">
                 <div className="h-8 bg-gray-200 rounded animate-pulse w-48" />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[1,2,3].map(i => <div key={i} className="h-24 bg-gray-200 rounded-2xl animate-pulse" />)}
+                    {[1, 2, 3].map(i => <div key={i} className="h-24 bg-gray-200 rounded-2xl animate-pulse" />)}
                 </div>
             </div>
         );
@@ -161,50 +253,108 @@ const SavingsCalculator = () => {
         <div className="space-y-6 max-w-5xl mx-auto">
             <h1 className="text-2xl font-bold text-gray-800">Monthly Goal Calculator</h1>
 
-            {/* Auto-filled Summary from your data */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="glass-card p-4">
                     <p className="text-xs text-gray-500">Total Monthly Income</p>
                     <p className="text-xl font-bold text-success">₹{autoData.monthlyIncome.toLocaleString()}</p>
                 </div>
+
                 <div className="glass-card p-4">
                     <p className="text-xs text-gray-500">Total Monthly Expenses</p>
                     <p className="text-xl font-bold text-danger">₹{(autoData.monthlyExpenses + totalFixedExpenses).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-400">Expenses: ₹{autoData.monthlyExpenses.toLocaleString()} + Subs: ₹{autoData.subscriptionsCost.toLocaleString()} + Recurring: ₹{autoData.recurringExpensesCost.toLocaleString()} + Saving: ₹{autoData.compulsorySaving.toLocaleString()}</p>
+                    <p className="text-[10px] text-gray-400">
+                        Expenses: ₹{autoData.monthlyExpenses.toLocaleString()} + Subs: ₹{autoData.subscriptionsCost.toLocaleString()} + Recurring: ₹{autoData.recurringExpensesCost.toLocaleString()} + Saved Now: ₹{autoData.compulsorySaving.toLocaleString()}
+                    </p>
                 </div>
+
                 <div className="glass-card p-4">
                     <p className="text-xs text-gray-500">Available After All Expenses</p>
-                    <p className={`text-xl font-bold ${availableIncome >= 0 ? 'text-success' : 'text-danger'}`}>₹{Math.max(0, availableIncome).toLocaleString()}</p>
+                    <p className={`text-xl font-bold ${availableIncome >= 0 ? 'text-success' : 'text-danger'}`}>
+                        ₹{Math.max(0, availableIncome).toLocaleString()}
+                    </p>
                 </div>
             </div>
 
             <div className="glass-card p-6">
-                <h3 className="text-lg font-semibold flex items-center mb-4"><Calculator size={20} className="mr-2 text-primary" /> Goal Details</h3>
+                <h3 className="text-lg font-semibold flex items-center mb-4">
+                    <Calculator size={20} className="mr-2 text-primary" />
+                    Goal Details
+                </h3>
+
                 <form onSubmit={handleCalculate}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Goal Name</label>
-                            <input type="text" required className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none" value={goalName} onChange={e => setGoalName(e.target.value)} placeholder="e.g. New Laptop" />
+                            <label className="block text-sm font-medium mb-1">Select Future Goal</label>
+                            <select
+                                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
+                                value={selectedGoalId}
+                                onChange={e => handleGoalSelect(e.target.value)}
+                            >
+                                <option value="">Select a goal</option>
+                                {goals.map(goal => (
+                                    <option key={goal._id || goal.id} value={goal._id || goal.id}>
+                                        {getGoalName(goal)} - Saved ₹{getGoalSavedAmount(goal).toLocaleString()} / ₹{getGoalTargetAmount(goal).toLocaleString()}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Goal Name</label>
+                            <input
+                                type="text"
+                                required
+                                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
+                                value={goalName}
+                                onChange={e => setGoalName(e.target.value)}
+                                placeholder="e.g. New Laptop"
+                            />
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium mb-1">Target Amount (₹)</label>
-                            <input type="number" required min="1" className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none" value={targetAmount} onChange={e => setTargetAmount(e.target.value)} placeholder="e.g. 20000" />
+                            <input
+                                type="number"
+                                required
+                                min="1"
+                                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
+                                value={targetAmount}
+                                onChange={e => setTargetAmount(e.target.value)}
+                                placeholder="e.g. 20000"
+                            />
                         </div>
+
                         <div>
                             <label className="block text-sm font-medium mb-1">Current Saved Amount (₹)</label>
-                            <input type="number" min="0" className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none" value={currentSaved} onChange={e => setCurrentSaved(e.target.value)} placeholder="e.g. 5000" />
+                            <input
+                                type="number"
+                                min="0"
+                                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
+                                value={currentSaved}
+                                onChange={e => setCurrentSaved(e.target.value)}
+                                placeholder="Future goal saved amount"
+                            />
                         </div>
+
                         <div>
                             <label className="block text-sm font-medium mb-1">Target Month / Deadline</label>
-                            <input type="month" className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none" value={deadline} onChange={e => setDeadline(e.target.value)} />
+                            <input
+                                type="month"
+                                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
+                                value={deadline}
+                                onChange={e => setDeadline(e.target.value)}
+                            />
                         </div>
                     </div>
 
                     <p className="text-xs text-gray-400 mb-4">
-                        * Income, expenses, subscriptions, recurring expenses, and compulsory savings auto-filled from your account.
+                        * Income, expenses, subscriptions, recurring expenses, currently saved amount, and future goal saved amount are auto-filled from your account.
                     </p>
 
-                    <button type="submit" className="w-full bg-gradient-to-r from-primary to-secondary text-white py-2.5 rounded-lg hover:opacity-90 transition font-medium">
+                    <button
+                        type="submit"
+                        className="w-full bg-gradient-to-r from-primary to-secondary text-white py-2.5 rounded-lg hover:opacity-90 transition font-medium"
+                    >
                         Calculate Goal Feasibility
                     </button>
                 </form>
@@ -213,7 +363,7 @@ const SavingsCalculator = () => {
             {result && (
                 <div className="glass-card p-6">
                     <h3 className="text-lg font-semibold mb-4">Result</h3>
-                    
+
                     {result.isAlreadyAchieved ? (
                         <div className="flex items-center space-x-3 p-4 bg-success/10 rounded-lg border border-success/20">
                             <CheckCircle size={24} className="text-success" />
@@ -241,32 +391,38 @@ const SavingsCalculator = () => {
                                     <p className="text-xs text-gray-500 uppercase">Need to Save</p>
                                     <p className="font-bold text-lg text-gray-800">₹{result.needed.toLocaleString()}</p>
                                 </div>
+
                                 <div className="bg-white p-3 rounded-xl border border-gray-100">
                                     <p className="text-xs text-gray-500 uppercase">Total Income</p>
                                     <p className="font-bold text-lg text-success">₹{result.income.toLocaleString()}</p>
                                 </div>
+
                                 <div className="bg-white p-3 rounded-xl border border-gray-100">
                                     <p className="text-xs text-gray-500 uppercase">Total Expenses</p>
                                     <p className="font-bold text-lg text-danger">₹{result.totalExpenses.toLocaleString()}</p>
                                 </div>
+
                                 <div className="bg-white p-3 rounded-xl border border-gray-100">
                                     <p className="text-xs text-gray-500 uppercase">Available After All</p>
-                                    <p className={`font-bold text-lg ${result.availableAfterExpenses > 0 ? 'text-success' : 'text-danger'}`}>₹{result.availableAfterExpenses.toLocaleString()}</p>
+                                    <p className={`font-bold text-lg ${result.availableAfterExpenses > 0 ? 'text-success' : 'text-danger'}`}>
+                                        ₹{result.availableAfterExpenses.toLocaleString()}
+                                    </p>
                                 </div>
                             </div>
 
-                            {/* Fixed expenses breakdown */}
-                            <div className="grid grid-cols-4 gap-2 mb-4">
+                            <div className="grid grid-cols-3 gap-2 mb-4">
                                 <div className="bg-gray-50 rounded-lg p-2 text-center">
                                     <p className="text-[10px] text-gray-500">Subscriptions</p>
                                     <p className="text-xs font-semibold">₹{result.subscriptions.toLocaleString()}</p>
                                 </div>
+
                                 <div className="bg-gray-50 rounded-lg p-2 text-center">
                                     <p className="text-[10px] text-gray-500">Recurring</p>
                                     <p className="text-xs font-semibold">₹{result.recurringExpenses.toLocaleString()}</p>
                                 </div>
+
                                 <div className="bg-gray-50 rounded-lg p-2 text-center">
-                                    <p className="text-[10px] text-gray-500">Comp. Saving</p>
+                                    <p className="text-[10px] text-gray-500">Saved Now</p>
                                     <p className="text-xs font-semibold">₹{result.compulsorySaving.toLocaleString()}</p>
                                 </div>
                             </div>
@@ -278,6 +434,7 @@ const SavingsCalculator = () => {
                                     ) : (
                                         <AlertTriangle size={20} className="text-danger mt-0.5" />
                                     )}
+
                                     <div>
                                         <p className={`font-semibold ${result.isPossible ? 'text-success' : 'text-danger'}`}>
                                             {result.isPossible ? 'This goal is possible this month!' : 'This goal is not possible this month'}
