@@ -6,10 +6,6 @@ import { Calculator, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react'
 const SavingsCalculator = () => {
     const { user } = useContext(AuthContext);
     const [loadingData, setLoadingData] = useState(true);
-
-    const [goals, setGoals] = useState([]);
-    const [selectedGoalId, setSelectedGoalId] = useState('');
-
     const [goalName, setGoalName] = useState('');
     const [targetAmount, setTargetAmount] = useState('');
     const [currentSaved, setCurrentSaved] = useState('');
@@ -21,7 +17,9 @@ const SavingsCalculator = () => {
         monthlyExpenses: 0,
         subscriptionsCost: 0,
         recurringExpensesCost: 0,
-        compulsorySaving: 0,
+        actualCompulsorySaved: 0,
+        futureGoalsSaved: 0,
+        totalSavedAmount: 0,
         expenseCategories: {}
     });
 
@@ -31,33 +29,7 @@ const SavingsCalculator = () => {
 
     const API_BASE = import.meta.env.VITE_API_URL || 'https://spendwise-ai-fwmp.onrender.com/api';
 
-    const getGoalSavedAmount = (goal) => {
-        return Number(
-            goal?.currentAmount ??
-            goal?.savedAmount ??
-            goal?.currentSaved ??
-            goal?.saved ??
-            0
-        );
-    };
-
-    const getGoalTargetAmount = (goal) => {
-        return Number(
-            goal?.targetAmount ??
-            goal?.target ??
-            0
-        );
-    };
-
-    const getGoalName = (goal) => {
-        return goal?.name || goal?.title || '';
-    };
-
-    const getGoalDeadline = (goal) => {
-        return goal?.deadline || goal?.dueDate || goal?.targetDate || '';
-    };
-
-    const getActualCompulsorySaving = (saving) => {
+    const getActualCompulsorySaved = (saving) => {
         return Number(
             saving?.savedAmount ??
             saving?.currentSaved ??
@@ -70,32 +42,34 @@ const SavingsCalculator = () => {
         );
     };
 
-    const handleGoalSelect = (goalId) => {
-        setSelectedGoalId(goalId);
-        setResult(null);
-
-        const selectedGoal = goals.find(goal => (goal._id || goal.id) === goalId);
-
-        if (!selectedGoal) return;
-
-        setGoalName(getGoalName(selectedGoal));
-        setTargetAmount(getGoalTargetAmount(selectedGoal));
-        setCurrentSaved(getGoalSavedAmount(selectedGoal));
-
-        const goalDate = getGoalDeadline(selectedGoal);
-        if (goalDate) {
-            setDeadline(new Date(goalDate).toISOString().slice(0, 7));
-        } else {
-            setDeadline('');
-        }
+    const getFutureGoalSaved = (goal) => {
+        return Number(
+            goal?.currentAmount ??
+            goal?.savedAmount ??
+            goal?.currentSaved ??
+            goal?.saved ??
+            goal?.amountSaved ??
+            0
+        );
     };
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const config = { headers: { Authorization: `Bearer ${user.token}` } };
+                const config = {
+                    headers: {
+                        Authorization: `Bearer ${user.token}`
+                    }
+                };
 
-                const [incRes, expRes, subSumRes, recExpRes, compSavRes, goalsRes] = await Promise.all([
+                const [
+                    incRes,
+                    expRes,
+                    subSumRes,
+                    recExpRes,
+                    compSavRes,
+                    goalsRes
+                ] = await Promise.all([
                     axios.get(`${API_BASE}/income`, config),
                     axios.get(`${API_BASE}/expenses`, config),
                     axios.get(`${API_BASE}/subscriptions/summary`, config),
@@ -111,22 +85,33 @@ const SavingsCalculator = () => {
                 const compSavings = compSavRes.data || {};
                 const futureGoals = goalsRes.data || [];
 
-                setGoals(futureGoals);
+                const totalIncome =
+                    income.reduce((sum, item) => sum + Number(item.amount || 0), 0) ||
+                    Number(user?.monthlyIncome || 0);
 
-                const totalIncome = income.reduce((s, i) => s + Number(i.amount || 0), 0) || user?.monthlyIncome || 0;
-                const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+                const totalExpenses = expenses.reduce(
+                    (sum, item) => sum + Number(item.amount || 0),
+                    0
+                );
+
                 const subCost = Number(subSummary?.monthlyCost || 0);
 
                 const recCost = recExpenses
-                    .filter(r => r.status === 'Active')
-                    .reduce((s, r) => s + Number(r.amount || 0), 0);
+                    .filter(item => item.status === 'Active')
+                    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
 
-                const actualCompulsorySaving = getActualCompulsorySaving(compSavings);
+                const actualCompulsorySaved = getActualCompulsorySaved(compSavings);
+
+                const futureGoalsSaved = futureGoals.reduce((sum, goal) => {
+                    return sum + getFutureGoalSaved(goal);
+                }, 0);
+
+                const totalSavedAmount = actualCompulsorySaved + futureGoalsSaved;
 
                 const catMap = {};
-                expenses.forEach(e => {
-                    const category = e.category || 'Other';
-                    catMap[category] = (catMap[category] || 0) + Number(e.amount || 0);
+                expenses.forEach(item => {
+                    const category = item.category || 'Other';
+                    catMap[category] = (catMap[category] || 0) + Number(item.amount || 0);
                 });
 
                 setAutoData({
@@ -134,23 +119,14 @@ const SavingsCalculator = () => {
                     monthlyExpenses: totalExpenses,
                     subscriptionsCost: subCost,
                     recurringExpensesCost: recCost,
-                    compulsorySaving: actualCompulsorySaving,
+                    actualCompulsorySaved,
+                    futureGoalsSaved,
+                    totalSavedAmount,
                     expenseCategories: catMap
                 });
 
-                const firstActiveGoal = futureGoals.find(goal => goal.status === 'Active') || futureGoals[0];
-
-                if (firstActiveGoal) {
-                    const goalDate = getGoalDeadline(firstActiveGoal);
-
-                    setSelectedGoalId(firstActiveGoal._id || firstActiveGoal.id);
-                    setGoalName(getGoalName(firstActiveGoal));
-                    setTargetAmount(getGoalTargetAmount(firstActiveGoal));
-                    setCurrentSaved(getGoalSavedAmount(firstActiveGoal));
-
-                    if (goalDate) {
-                        setDeadline(new Date(goalDate).toISOString().slice(0, 7));
-                    }
+                if (!currentSaved) {
+                    setCurrentSaved(totalSavedAmount);
                 }
             } catch (err) {
                 console.error('Failed to load user data', err);
@@ -164,8 +140,15 @@ const SavingsCalculator = () => {
         }
     }, [user?.token, currentMonth, currentYear, API_BASE]);
 
-    const totalFixedExpenses = autoData.subscriptionsCost + autoData.recurringExpensesCost + autoData.compulsorySaving;
-    const availableIncome = autoData.monthlyIncome - autoData.monthlyExpenses - totalFixedExpenses;
+    const totalFixedExpenses =
+        autoData.subscriptionsCost +
+        autoData.recurringExpensesCost +
+        autoData.totalSavedAmount;
+
+    const availableIncome =
+        autoData.monthlyIncome -
+        autoData.monthlyExpenses -
+        totalFixedExpenses;
 
     const handleCalculate = (e) => {
         e.preventDefault();
@@ -185,7 +168,9 @@ const SavingsCalculator = () => {
             fixedExpenses: totalFixedExpenses,
             subscriptions: autoData.subscriptionsCost,
             recurringExpenses: autoData.recurringExpensesCost,
-            compulsorySaving: autoData.compulsorySaving,
+            actualCompulsorySaved: autoData.actualCompulsorySaved,
+            futureGoalsSaved: autoData.futureGoalsSaved,
+            totalSavedAmount: autoData.totalSavedAmount,
             availableAfterExpenses: available,
             shortfall: Math.max(0, shortfall),
             isPossible: available >= needed,
@@ -201,12 +186,16 @@ const SavingsCalculator = () => {
         }
 
         if (autoData.monthlyIncome <= 0) {
-            setResult({ ...resultObj, message: "No income data found. Please add income first.", error: true });
+            setResult({
+                ...resultObj,
+                message: "No income data found. Please add income first.",
+                error: true
+            });
             return;
         }
 
         if (resultObj.isPossible) {
-            resultObj.message = `This goal is possible this month! You need ₹${needed.toLocaleString()} and have ₹${available.toLocaleString()} available after all expenses, subscriptions, recurring expenses, and currently saved amount.`;
+            resultObj.message = `This goal is possible this month! You need ₹${needed.toLocaleString()} and have ₹${available.toLocaleString()} available after all expenses, subscriptions, recurring expenses, and saved amounts.`;
             resultObj.progress = Math.min(100, Math.round((saved / target) * 100));
         } else {
             resultObj.message = `This goal is not possible this month with your current income and expenses.`;
@@ -214,7 +203,7 @@ const SavingsCalculator = () => {
 
             const catEntries = Object.entries(autoData.expenseCategories)
                 .map(([cat, val]) => ({ cat, val }))
-                .filter(c => c.val > 0)
+                .filter(item => item.val > 0)
                 .sort((a, b) => b.val - a.val);
 
             let remainingReduction = resultObj.shortfall;
@@ -225,13 +214,17 @@ const SavingsCalculator = () => {
                 const reduction = Math.min(val * 0.5, remainingReduction);
 
                 if (reduction >= 500) {
-                    resultObj.suggestions.push(`Reduce ${cat} spending by ₹${Math.round(reduction).toLocaleString()}`);
+                    resultObj.suggestions.push(
+                        `Reduce ${cat} spending by ₹${Math.round(reduction).toLocaleString()}`
+                    );
                     remainingReduction -= reduction;
                 }
             });
 
             if (remainingReduction > 0 && totalFixedExpenses > 0) {
-                resultObj.suggestions.push(`Also consider reducing subscriptions or recurring expenses by ₹${Math.round(remainingReduction).toLocaleString()}`);
+                resultObj.suggestions.push(
+                    `Also consider reducing subscriptions or recurring expenses by ₹${Math.round(remainingReduction).toLocaleString()}`
+                );
             }
         }
 
@@ -243,7 +236,9 @@ const SavingsCalculator = () => {
             <div className="space-y-6 max-w-5xl mx-auto">
                 <div className="h-8 bg-gray-200 rounded animate-pulse w-48" />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[1, 2, 3].map(i => <div key={i} className="h-24 bg-gray-200 rounded-2xl animate-pulse" />)}
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="h-24 bg-gray-200 rounded-2xl animate-pulse" />
+                    ))}
                 </div>
             </div>
         );
@@ -256,14 +251,18 @@ const SavingsCalculator = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="glass-card p-4">
                     <p className="text-xs text-gray-500">Total Monthly Income</p>
-                    <p className="text-xl font-bold text-success">₹{autoData.monthlyIncome.toLocaleString()}</p>
+                    <p className="text-xl font-bold text-success">
+                        ₹{autoData.monthlyIncome.toLocaleString()}
+                    </p>
                 </div>
 
                 <div className="glass-card p-4">
                     <p className="text-xs text-gray-500">Total Monthly Expenses</p>
-                    <p className="text-xl font-bold text-danger">₹{(autoData.monthlyExpenses + totalFixedExpenses).toLocaleString()}</p>
+                    <p className="text-xl font-bold text-danger">
+                        ₹{(autoData.monthlyExpenses + totalFixedExpenses).toLocaleString()}
+                    </p>
                     <p className="text-[10px] text-gray-400">
-                        Expenses: ₹{autoData.monthlyExpenses.toLocaleString()} + Subs: ₹{autoData.subscriptionsCost.toLocaleString()} + Recurring: ₹{autoData.recurringExpensesCost.toLocaleString()} + Saved Now: ₹{autoData.compulsorySaving.toLocaleString()}
+                        Expenses: ₹{autoData.monthlyExpenses.toLocaleString()} + Subs: ₹{autoData.subscriptionsCost.toLocaleString()} + Recurring: ₹{autoData.recurringExpensesCost.toLocaleString()} + Saved: ₹{autoData.totalSavedAmount.toLocaleString()}
                     </p>
                 </div>
 
@@ -275,6 +274,32 @@ const SavingsCalculator = () => {
                 </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="glass-card p-4">
+                    <p className="text-xs text-gray-500">Currently Saved</p>
+                    <p className="text-xl font-bold text-primary">
+                        ₹{autoData.actualCompulsorySaved.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-gray-400">From monthly saving section</p>
+                </div>
+
+                <div className="glass-card p-4">
+                    <p className="text-xs text-gray-500">Future Goals Saved</p>
+                    <p className="text-xl font-bold text-primary">
+                        ₹{autoData.futureGoalsSaved.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-gray-400">Total saved in Future Planner goals</p>
+                </div>
+
+                <div className="glass-card p-4">
+                    <p className="text-xs text-gray-500">Total Saved Counted</p>
+                    <p className="text-xl font-bold text-success">
+                        ₹{autoData.totalSavedAmount.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-gray-400">Currently saved + Future goals saved</p>
+                </div>
+            </div>
+
             <div className="glass-card p-6">
                 <h3 className="text-lg font-semibold flex items-center mb-4">
                     <Calculator size={20} className="mr-2 text-primary" />
@@ -283,22 +308,6 @@ const SavingsCalculator = () => {
 
                 <form onSubmit={handleCalculate}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Select Future Goal</label>
-                            <select
-                                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
-                                value={selectedGoalId}
-                                onChange={e => handleGoalSelect(e.target.value)}
-                            >
-                                <option value="">Select a goal</option>
-                                {goals.map(goal => (
-                                    <option key={goal._id || goal.id} value={goal._id || goal.id}>
-                                        {getGoalName(goal)} - Saved ₹{getGoalSavedAmount(goal).toLocaleString()} / ₹{getGoalTargetAmount(goal).toLocaleString()}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
                         <div>
                             <label className="block text-sm font-medium mb-1">Goal Name</label>
                             <input
@@ -332,8 +341,11 @@ const SavingsCalculator = () => {
                                 className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
                                 value={currentSaved}
                                 onChange={e => setCurrentSaved(e.target.value)}
-                                placeholder="Future goal saved amount"
+                                placeholder="e.g. 11000"
                             />
+                            <p className="text-[10px] text-gray-400 mt-1">
+                                Auto-filled from currently saved + Future Planner saved amount.
+                            </p>
                         </div>
 
                         <div>
@@ -348,7 +360,7 @@ const SavingsCalculator = () => {
                     </div>
 
                     <p className="text-xs text-gray-400 mb-4">
-                        * Income, expenses, subscriptions, recurring expenses, currently saved amount, and future goal saved amount are auto-filled from your account.
+                        * Income, expenses, subscriptions, recurring expenses, currently saved amount, and Future Planner saved amounts are auto-filled from your account.
                     </p>
 
                     <button
@@ -369,7 +381,9 @@ const SavingsCalculator = () => {
                             <CheckCircle size={24} className="text-success" />
                             <div>
                                 <p className="font-semibold text-success">Goal Already Achieved!</p>
-                                <p className="text-sm text-gray-600">You've already saved enough for this goal.</p>
+                                <p className="text-sm text-gray-600">
+                                    You've already saved enough for this goal.
+                                </p>
                             </div>
                         </div>
                     ) : (
@@ -381,7 +395,10 @@ const SavingsCalculator = () => {
                                         <span className="font-medium">{result.progress}%</span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-3">
-                                        <div className="bg-primary h-3 rounded-full" style={{ width: `${result.progress}%` }} />
+                                        <div
+                                            className="bg-primary h-3 rounded-full"
+                                            style={{ width: `${result.progress}%` }}
+                                        />
                                     </div>
                                 </div>
                             )}
@@ -389,17 +406,23 @@ const SavingsCalculator = () => {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                                 <div className="bg-white p-3 rounded-xl border border-gray-100">
                                     <p className="text-xs text-gray-500 uppercase">Need to Save</p>
-                                    <p className="font-bold text-lg text-gray-800">₹{result.needed.toLocaleString()}</p>
+                                    <p className="font-bold text-lg text-gray-800">
+                                        ₹{result.needed.toLocaleString()}
+                                    </p>
                                 </div>
 
                                 <div className="bg-white p-3 rounded-xl border border-gray-100">
                                     <p className="text-xs text-gray-500 uppercase">Total Income</p>
-                                    <p className="font-bold text-lg text-success">₹{result.income.toLocaleString()}</p>
+                                    <p className="font-bold text-lg text-success">
+                                        ₹{result.income.toLocaleString()}
+                                    </p>
                                 </div>
 
                                 <div className="bg-white p-3 rounded-xl border border-gray-100">
                                     <p className="text-xs text-gray-500 uppercase">Total Expenses</p>
-                                    <p className="font-bold text-lg text-danger">₹{result.totalExpenses.toLocaleString()}</p>
+                                    <p className="font-bold text-lg text-danger">
+                                        ₹{result.totalExpenses.toLocaleString()}
+                                    </p>
                                 </div>
 
                                 <div className="bg-white p-3 rounded-xl border border-gray-100">
@@ -410,20 +433,26 @@ const SavingsCalculator = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-2 mb-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
                                 <div className="bg-gray-50 rounded-lg p-2 text-center">
                                     <p className="text-[10px] text-gray-500">Subscriptions</p>
-                                    <p className="text-xs font-semibold">₹{result.subscriptions.toLocaleString()}</p>
+                                    <p className="text-xs font-semibold">
+                                        ₹{result.subscriptions.toLocaleString()}
+                                    </p>
                                 </div>
 
                                 <div className="bg-gray-50 rounded-lg p-2 text-center">
                                     <p className="text-[10px] text-gray-500">Recurring</p>
-                                    <p className="text-xs font-semibold">₹{result.recurringExpenses.toLocaleString()}</p>
+                                    <p className="text-xs font-semibold">
+                                        ₹{result.recurringExpenses.toLocaleString()}
+                                    </p>
                                 </div>
 
                                 <div className="bg-gray-50 rounded-lg p-2 text-center">
-                                    <p className="text-[10px] text-gray-500">Saved Now</p>
-                                    <p className="text-xs font-semibold">₹{result.compulsorySaving.toLocaleString()}</p>
+                                    <p className="text-[10px] text-gray-500">Total Saved Counted</p>
+                                    <p className="text-xs font-semibold">
+                                        ₹{result.totalSavedAmount.toLocaleString()}
+                                    </p>
                                 </div>
                             </div>
 
@@ -439,9 +468,15 @@ const SavingsCalculator = () => {
                                         <p className={`font-semibold ${result.isPossible ? 'text-success' : 'text-danger'}`}>
                                             {result.isPossible ? 'This goal is possible this month!' : 'This goal is not possible this month'}
                                         </p>
-                                        <p className="text-sm text-gray-600 mt-1">{result.message}</p>
+
+                                        <p className="text-sm text-gray-600 mt-1">
+                                            {result.message}
+                                        </p>
+
                                         {result.shortfall > 0 && (
-                                            <p className="text-sm font-medium text-danger mt-1">Shortfall: ₹{result.shortfall.toLocaleString()}</p>
+                                            <p className="text-sm font-medium text-danger mt-1">
+                                                Shortfall: ₹{result.shortfall.toLocaleString()}
+                                            </p>
                                         )}
                                     </div>
                                 </div>
@@ -451,13 +486,19 @@ const SavingsCalculator = () => {
                                 <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
                                     <div className="flex items-center space-x-2 mb-2">
                                         <Lightbulb size={18} className="text-primary" />
-                                        <p className="font-semibold text-sm text-primary">Suggestions - Where to Reduce Spending</p>
+                                        <p className="font-semibold text-sm text-primary">
+                                            Suggestions - Where to Reduce Spending
+                                        </p>
                                     </div>
+
                                     <ul className="space-y-1">
-                                        {result.suggestions.map((s, i) => (
-                                            <li key={i} className="text-sm text-gray-700 flex items-start space-x-2">
+                                        {result.suggestions.map((suggestion, index) => (
+                                            <li
+                                                key={index}
+                                                className="text-sm text-gray-700 flex items-start space-x-2"
+                                            >
                                                 <span className="text-primary mt-0.5">•</span>
-                                                <span>{s}</span>
+                                                <span>{suggestion}</span>
                                             </li>
                                         ))}
                                     </ul>
