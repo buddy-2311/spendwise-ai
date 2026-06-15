@@ -316,11 +316,7 @@ const Dashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="glass-card p-4"
-                >
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4">
                     <div className="flex items-center space-x-2 mb-1">
                         <TrendingUp size={16} className="text-secondary" />
                         <span className="text-xs font-medium text-gray-500">Next Month</span>
@@ -330,12 +326,7 @@ const Dashboard = () => {
                     </p>
                 </motion.div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="glass-card p-4"
-                >
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-4">
                     <div className="flex items-center space-x-2 mb-1">
                         <CreditCard size={16} className="text-primary" />
                         <span className="text-xs font-medium text-gray-500">Subscriptions</span>
@@ -346,12 +337,7 @@ const Dashboard = () => {
                     </p>
                 </motion.div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="glass-card p-4"
-                >
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-4">
                     <div className="flex items-center space-x-2 mb-1">
                         <Landmark size={16} className="text-success" />
                         <span className="text-xs font-medium text-gray-500">Net Worth</span>
@@ -361,12 +347,7 @@ const Dashboard = () => {
                     </p>
                 </motion.div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="glass-card p-4"
-                >
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card p-4">
                     <div className="flex items-center space-x-2 mb-1">
                         <Shield size={16} className="text-danger" />
                         <span className="text-xs font-medium text-gray-500">Limits Exceeded</span>
@@ -419,12 +400,12 @@ const Dashboard = () => {
                     </div>
 
                     <div className="bg-white/60 rounded-xl p-3 md:p-4">
-                        <p className="text-xs text-gray-500">Saved Money</p>
+                        <p className="text-xs text-gray-500">Saved This Month</p>
                         <p className="font-semibold text-success">
-                            ₹{savedMoneyThisMonth.toLocaleString()}
+                            ₹{monthlySavedMoney.toLocaleString()}
                         </p>
                         <p className="text-[10px] text-gray-400">
-                            Monthly: ₹{monthlySavedMoney.toLocaleString()} + Future: ₹{futureGoalsSaved.toLocaleString()}
+                            Only monthly compulsory saving
                         </p>
                     </div>
 
