@@ -41,6 +41,7 @@ const Dashboard = () => {
     const [subSummary, setSubSummary] = useState(null);
     const [nwSummary, setNwSummary] = useState(null);
     const [limitSummary, setLimitSummary] = useState(null);
+    const [futureGoalsSaved, setFutureGoalsSaved] = useState(0);
 
     const [compulsorySaving, setCompulsorySaving] = useState({
         targetAmount: 0,
@@ -73,15 +74,29 @@ const Dashboard = () => {
         );
     };
 
+    const getFutureGoalSavedAmount = (goal) => {
+        return Number(
+            goal?.currentAmount ??
+            goal?.savedAmount ??
+            goal?.currentSaved ??
+            goal?.saved ??
+            goal?.amountSaved ??
+            goal?.actualSaved ??
+            0
+        );
+    };
+
     const fetchCompulsorySaving = useCallback(async () => {
         try {
             const { data } = await getCurrentSaving(user.token, currentMonth, currentYear);
+            const actualSaved = getActualSavedAmount(data);
+            const target = Number(data?.targetAmount || 0);
 
             setCompulsorySaving({
-                targetAmount: Number(data?.targetAmount || 0),
-                savedAmount: getActualSavedAmount(data),
-                remaining: Number(data?.remaining || Math.max(0, Number(data?.targetAmount || 0) - getActualSavedAmount(data))),
-                status: data?.status || (getActualSavedAmount(data) >= Number(data?.targetAmount || 0) ? 'Completed' : 'Pending')
+                targetAmount: target,
+                savedAmount: actualSaved,
+                remaining: Number(data?.remaining || Math.max(0, target - actualSaved)),
+                status: data?.status || (actualSaved >= target ? 'Completed' : 'Pending')
             });
         } catch (error) {
             console.error('Failed to fetch compulsory saving', error);
@@ -125,6 +140,20 @@ const Dashboard = () => {
                     setLimitSummary(r.data);
                 } catch {}
 
+                try {
+                    const r = await axios.get(`${API_BASE}/goals`, config);
+                    const goals = r.data || [];
+
+                    const totalFutureSaved = goals.reduce((sum, goal) => {
+                        return sum + getFutureGoalSavedAmount(goal);
+                    }, 0);
+
+                    setFutureGoalsSaved(totalFutureSaved);
+                } catch (error) {
+                    console.error('Failed to fetch future planner goals', error);
+                    setFutureGoalsSaved(0);
+                }
+
                 await fetchCompulsorySaving();
             } catch (error) {
                 console.error('Error fetching dashboard data', error);
@@ -140,10 +169,9 @@ const Dashboard = () => {
     const totalExpense = expenses.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
 
     const balanceBeforeSaving = totalIncome - totalExpense;
-    const savedMoneyThisMonth = Number(compulsorySaving.savedAmount || 0);
+    const monthlySavedMoney = Number(compulsorySaving.savedAmount || 0);
+    const savedMoneyThisMonth = monthlySavedMoney + futureGoalsSaved;
 
-    // This is the main fix:
-    // savedMoneyThisMonth is deducted from balance and shown separately in a new saved money box.
     const totalAmountLeft = balanceBeforeSaving - savedMoneyThisMonth;
 
     const categoryData = expenses.reduce((acc, curr) => {
@@ -225,13 +253,12 @@ const Dashboard = () => {
                             ₹{totalAmountLeft.toLocaleString()}
                         </p>
                         <p className="text-[10px] text-gray-400">
-                            Balance after deducting saved money
+                            Balance after deducting monthly saved + Future Planner saved
                         </p>
                     </div>
                 </div>
             </div>
 
-            {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                 <div className="glass-card p-6 flex items-center justify-between">
                     <div>
@@ -250,12 +277,12 @@ const Dashboard = () => {
 
                 <div className="glass-card p-6 flex items-center justify-between">
                     <div>
-                        <p className="text-sm text-gray-500 font-medium">Saved Money This Month</p>
+                        <p className="text-sm text-gray-500 font-medium">Saved Money</p>
                         <h3 className="text-2xl font-bold text-success mt-1">
                             ₹{savedMoneyThisMonth.toLocaleString()}
                         </h3>
                         <p className="text-[10px] text-gray-400 mt-1">
-                            Deducted from amount left
+                            Monthly: ₹{monthlySavedMoney.toLocaleString()} + Future: ₹{futureGoalsSaved.toLocaleString()}
                         </p>
                     </div>
                     <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center text-success">
@@ -288,7 +315,6 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Feature Mini Widgets */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -351,7 +377,6 @@ const Dashboard = () => {
                 </motion.div>
             </div>
 
-            {/* Compulsory Monthly Savings Section */}
             <div className="glass-card p-5 md:p-6 bg-gradient-to-br from-secondary/5 to-primary/5 border-secondary/20">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                     <div className="flex items-center space-x-2">
@@ -394,9 +419,12 @@ const Dashboard = () => {
                     </div>
 
                     <div className="bg-white/60 rounded-xl p-3 md:p-4">
-                        <p className="text-xs text-gray-500">Saved This Month</p>
+                        <p className="text-xs text-gray-500">Saved Money</p>
                         <p className="font-semibold text-success">
                             ₹{savedMoneyThisMonth.toLocaleString()}
+                        </p>
+                        <p className="text-[10px] text-gray-400">
+                            Monthly: ₹{monthlySavedMoney.toLocaleString()} + Future: ₹{futureGoalsSaved.toLocaleString()}
                         </p>
                     </div>
 
@@ -428,13 +456,13 @@ const Dashboard = () => {
                             <div
                                 className="h-2.5 rounded-full bg-secondary transition-all duration-500"
                                 style={{
-                                    width: `${Math.min(100, (savedMoneyThisMonth / (compulsorySaving.targetAmount || 1)) * 100)}%`
+                                    width: `${Math.min(100, (monthlySavedMoney / (compulsorySaving.targetAmount || 1)) * 100)}%`
                                 }}
                             />
                         </div>
 
                         <p className="text-xs text-gray-500 mt-1 text-right">
-                            {Math.min(100, Math.round((savedMoneyThisMonth / (compulsorySaving.targetAmount || 1)) * 100))}% saved
+                            {Math.min(100, Math.round((monthlySavedMoney / (compulsorySaving.targetAmount || 1)) * 100))}% monthly saving target completed
                         </p>
                     </div>
                 )}
@@ -488,7 +516,6 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Compulsory Saving Modal */}
             <AnimatePresence>
                 {showSavingModal && (
                     <motion.div
@@ -551,7 +578,7 @@ const Dashboard = () => {
                                     </h2>
 
                                     <p className="text-sm text-gray-500 mb-4">
-                                        Current saved: ₹{savedMoneyThisMonth.toLocaleString()}
+                                        Monthly saved: ₹{monthlySavedMoney.toLocaleString()}
                                     </p>
 
                                     <div>
